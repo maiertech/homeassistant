@@ -1,4 +1,4 @@
-alias: Leaving and arriving (home)
+alias: Geofence home
 
 description:
   Send a push notification when an iPhone leaves home or arrives at home.

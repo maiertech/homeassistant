@@ -1,0 +1,34 @@
+alias: Geofence work (TM)
+
+description:
+  Send a push notification to Cindy's iPhone when Thilo arrives at or leaves
+  work. Only Thilo's iPhone triggers this automation and only Cindy is notified.
+
+triggers:
+  - trigger: zone
+    entity_id: device_tracker.iphone_tm
+    zone: zone.work
+    event: enter
+  - trigger: zone
+    entity_id: device_tracker.iphone_tm
+    zone: zone.work
+    event: leave
+
+conditions: []
+
+actions:
+  - variables:
+      arrived: "{{ trigger.event == 'enter' }}"
+      title: >-
+        {% if arrived %}Arriving at work 💼{% else %}Leaving work 👋{% endif %}
+      message: >-
+        {% if arrived %}Thilo has arrived at work.{% else %}Thilo has left
+        work.{% endif %}
+  - action: notify.send_message
+    target:
+      entity_id: notify.iphone_ck
+    data:
+      title: "{{ title }}"
+      message: "{{ message }}"
+
+mode: parallel
