@@ -1,21 +1,19 @@
-alias: Low battery (any Tado)
+alias: Low battery (Tado)
 
-description: >-
+description:
   Send a push and persistent notification when the batteries of a Tado
   thermostat are low.
 
 triggers:
   - trigger: state
     entity_id:
-      - binary_sensor.tado_living_room_battery
-      - binary_sensor.tado_bedroom_parents_battery
-      - binary_sensor.tado_bedroom_alex_battery
-      - binary_sensor.tado_office_ck_battery
-      - binary_sensor.tado_office_tm_battery
-      - binary_sensor.tado_bathroom_downstairs_battery
-      - binary_sensor.tado_hal_battery
-    from:
-      - "off"
+      - binary_sensor.living_room_tado_battery
+      - binary_sensor.office_ck_tado_battery
+      - binary_sensor.hal_tado_battery
+      - binary_sensor.bathroom_downstairs_tado_battery
+      - binary_sensor.parents_tado_battery
+      - binary_sensor.office_tm_tado_battery
+      - binary_sensor.alex_tado_battery
     to:
       - "on"
 
@@ -32,7 +30,7 @@ actions:
       notification_id: low_battery_{{ trigger.entity_id }}
   - action: notify.send_message
     target:
-      entity_id: notify.family_push_notifications
+      entity_id: notify.family
     data:
       title: "{{ title }}"
       message: "{{ message }}"
