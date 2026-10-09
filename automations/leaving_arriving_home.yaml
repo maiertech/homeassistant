@@ -1,0 +1,48 @@
+alias: Leaving and arriving (home)
+
+description:
+  Send a push notification when an iPhone leaves home or arrives at home.
+  FritzBox applies a 180-second grace period on departures. Never inform a phone
+  about its own arrival or departure.
+
+triggers:
+  - trigger: state
+    entity_id:
+      - device_tracker.iphone_tm
+      - device_tracker.iphone_ck
+    to:
+      - "home"
+      - "not_home"
+
+conditions: []
+
+actions:
+  - variables:
+      names:
+        device_tracker.iphone_tm: Thilo
+        device_tracker.iphone_ck: Cindy
+      name: "{{ names.get(trigger.entity_id, 'Someone') }}"
+      arrived: "{{ trigger.to == 'home' }}"
+      title: >-
+        {% if arrived %}Arriving home 🏠{% else %}Leaving home 👋{% endif %}
+      message: >-
+        {% if arrived %}{{ name }} has arrived at home.{% else %}{{ name }} has
+        left home.{% endif %}
+      recipients:
+        - device_tracker.iphone_tm
+        - device_tracker.iphone_ck
+  - repeat:
+      for_each: "{{ recipients }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ repeat.item != trigger.entity_id }}"
+          then:
+            - action: notify.send_message
+              target:
+                entity_id: "notify.{{ repeat.item.split('.')[1] }}"
+              data:
+                title: "{{ title }}"
+                message: "{{ message }}"
+
+mode: parallel
