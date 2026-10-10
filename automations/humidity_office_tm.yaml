@@ -1,0 +1,40 @@
+alias: Office TM humidity - ventilation reminder
+
+description: >-
+  Create a persistent reminder when office relative humidity has been above
+  60% for an hour. Dismiss it after the ventilation-needed sensor has remained
+  clear for 15 minutes. Ventilation is manual; this automation does not control
+  the Toshiba or the Tado radiator thermostat.
+
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.office_tm_ventilation_needed
+    to: "on"
+    id: ventilation_needed
+  - trigger: state
+    entity_id: binary_sensor.office_tm_ventilation_needed
+    to: "off"
+    id: humidity_normal
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: ventilation_needed
+        sequence:
+          - action: persistent_notification.create
+            data:
+              title: Ventilation needed (Office TM)
+              message: >-
+                Office humidity has been above 60% for one hour. Please
+                ventilate the room.
+              notification_id: office_tm_ventilation_needed
+      - conditions:
+          - condition: trigger
+            id: humidity_normal
+        sequence:
+          - action: persistent_notification.dismiss
+            data:
+              notification_id: office_tm_ventilation_needed
+
+mode: restart

@@ -1,0 +1,82 @@
+alias: Heating (Office TM)
+
+description: >-
+  During the heating season, use the dashboard occupied toggle to switch between
+  a base heating profile (16 °C) and an occupied heating profile (22 °C).
+
+triggers:
+  - trigger: state
+    entity_id:
+      - binary_sensor.heating_season
+      - input_boolean.office_tm_occupied
+      - sensor.office_tm_avg_temperature
+  - trigger: homeassistant
+    event: start
+
+actions:
+  - variables:
+      target_temp:
+        "{{ 22 if is_state('input_boolean.office_tm_occupied', 'on') else 16 }}"
+      # We ask the Toshiba to heat to +2.
+      # This ensures that the room sensor can reach +1.
+      heat_call_temp: "{{ (target_temp | float) + 2 }}"
+
+  - choose:
+      # Edge case: we are heating while heating season ends.
+      - conditions:
+          - condition: template
+            value_template:
+              "{{ not is_state('binary_sensor.heating_season', 'on') }}"
+        sequence:
+          - if:
+              - condition: state
+                entity_id: climate.office_tm_toshiba
+                state: heat
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: climate.office_tm_toshiba
+                data:
+                  hvac_mode: "off"
+
+      # Edge case: the room temperature is not available.
+      - conditions:
+          - condition: template
+            value_template:
+              "{{ not is_number(states('sensor.office_tm_avg_temperature')) }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.office_tm_toshiba
+            data:
+              hvac_mode: "off"
+
+      # Start heating if room temperature is at -1.
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ (states('sensor.office_tm_avg_temperature') | float) <=
+                 (target_temp | float - 1.0) }}
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.office_tm_toshiba
+            data:
+              hvac_mode: heat
+              temperature: "{{ heat_call_temp }}"
+
+      # Stop heating if the room temperature is at +1.
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ is_number(states('sensor.office_tm_avg_temperature')) and
+                 (states('sensor.office_tm_avg_temperature') | float) >=
+                 (target_temp | float + 1.0) }}
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.office_tm_toshiba
+            data:
+              hvac_mode: "off"
+
+mode: restart
