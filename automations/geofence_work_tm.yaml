@@ -7,11 +7,11 @@ description:
 triggers:
   - trigger: zone
     entity_id: device_tracker.iphone_tm
-    zone: zone.work
+    zone: zone.work_tm
     event: enter
   - trigger: zone
     entity_id: device_tracker.iphone_tm
-    zone: zone.work
+    zone: zone.work_tm
     event: leave
 
 conditions: []
