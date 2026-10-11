@@ -22,7 +22,7 @@ actions:
         device_tracker.iphone_tm: Thilo
         device_tracker.iphone_ck: Cindy
       name: "{{ names.get(trigger.entity_id, 'Someone') }}"
-      arrived: "{{ trigger.to == 'home' }}"
+      arrived: "{{ trigger.to_state.state == 'home' }}"
       title: >-
         {% if arrived %}Arriving home 🏠{% else %}Leaving home 👋{% endif %}
       message: >-
