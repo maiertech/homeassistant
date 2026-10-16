@@ -30,7 +30,8 @@ actions:
            else unoccupied_target_temp }}
       heat_call_temp_offset: 2
       target_temp_tolerance: 1
-      heat_call_temp: "{{ (target_temp | float) + (heat_call_temp_offset | float) }}"
+      heat_call_temp:
+        "{{ (target_temp | float) + (heat_call_temp_offset | float) }}"
 
   # During heating season, the night lockout takes priority.
   - choose:
@@ -43,7 +44,8 @@ actions:
         sequence:
           - if:
               - condition: template
-                value_template: "{{ not is_state('climate.office_tm_toshiba', 'off') }}"
+                value_template:
+                  "{{ not is_state('climate.office_tm_toshiba', 'off') }}"
             then:
               - action: climate.set_hvac_mode
                 target:
@@ -85,7 +87,8 @@ actions:
         sequence:
           - if:
               - condition: template
-                value_template: "{{ not is_state('climate.office_tm_toshiba', 'off') }}"
+                value_template:
+                  "{{ not is_state('climate.office_tm_toshiba', 'off') }}"
             then:
               - action: climate.set_hvac_mode
                 target:
@@ -102,8 +105,10 @@ actions:
           - condition: template
             value_template: >-
               {{ not is_state('climate.office_tm_toshiba', 'heat') or
-                 not is_number(state_attr('climate.office_tm_toshiba', 'temperature')) or
-                 (state_attr('climate.office_tm_toshiba', 'temperature') | float) !=
+                 not is_number(state_attr('climate.office_tm_toshiba',
+              'temperature')) or
+                 (state_attr('climate.office_tm_toshiba', 'temperature') |
+              float) !=
                    (heat_call_temp | float) }}
         sequence:
           - action: climate.set_temperature

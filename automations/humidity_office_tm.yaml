@@ -1,10 +1,10 @@
 alias: Office TM humidity - ventilation reminder
 
 description: >-
-  Create a persistent reminder when office relative humidity has been above
-  60% for an hour. Dismiss it after the ventilation-needed sensor has remained
-  clear for 15 minutes. Ventilation is manual; this automation does not control
-  the Toshiba or the Tado radiator thermostat.
+  Create a persistent reminder when office relative humidity has been above 60%
+  for an hour. Dismiss it after the ventilation-needed sensor has remained clear
+  for 15 minutes. Ventilation is manual; this automation does not control the
+  Toshiba or the Tado radiator thermostat.
 
 triggers:
   - trigger: state
