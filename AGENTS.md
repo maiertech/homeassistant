@@ -1,38 +1,37 @@
 # AGENTS.md
 
-This repository contains configuration for my Home Assistant (HA) instance. You
-cannot access the instance; I will provide instance-specific information and
-apply configurations there.
+This repository contains configuration files for my Home Assistant (HA)
+instance, which you cannot access. As an agent you will never deploy anthing in
+this repository to home assistant. The user will deploy automations by copying
+them to the Home Assistant server and create any required resources using the
+instructions in the relevant Markdown documentation.
 
-Home Assistant documentation: https://www.home-assistant.io/docs/.
+## Docs
 
-## Automations
+Use the official Home Assistant documentation for details about its behavior and
+configuration: https://www.home-assistant.io/docs/.
 
-Store automations in the `automations/` folder. When an automation needs an
-entity ID, use a clearly named placeholder and ask me for the actual ID. Provide
-the completed YAML for me to copy into Home Assistant.
+## Verification
 
-If an automation requires a helper that I must create in Home Assistant, provide
-detailed, step-by-step instructions for creating it. Assume the Home Assistant
-UI is in English.
+After changing anything in this repository, run `pnpm verify`. Resolve any
+failures before considering the work complete.
 
 ## Writing style
 
 - Capitalize only the first word in a heading.
 
-## Agent skills
+## Issue tracker
 
-### Issue tracker
+When working with GitHub issues in `maiertech/homeassistant`, use the `gh` CLI
+and follow `docs/agents/issue-tracker.md`.
 
-GitHub Issues in `maiertech/homeassistant`, managed with the `gh` CLI. See
-`docs/agents/issue-tracker.md`.
+## Triage labels
 
-### Triage labels
+When applying triage labels, follow the default five-role vocabulary in
+`docs/agents/triage-labels.md`; each label name matches its role.
 
-Default five-role vocabulary, with label names equal to role names. See
-`docs/agents/triage-labels.md`.
+## Domain docs
 
-### Domain docs
-
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See
-`docs/agents/domain.md`.
+When documenting domain terminology or decisions, follow
+`docs/agents/domain.md`: keep one `GLOSSARY.md` and put ADRs in the root
+`docs/adr/` directory.

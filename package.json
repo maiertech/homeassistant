@@ -4,9 +4,12 @@
   "packageManager": "pnpm@12.14.0",
   "scripts": {
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "lint": "prettier --check . && eslint .",
+    "verify": "pnpm lint"
   },
   "devDependencies": {
+    "eslint": "^10.12.0",
+    "eslint-plugin-yml": "^3.9.0",
     "prettier": "^3.9.10"
   }
 }
