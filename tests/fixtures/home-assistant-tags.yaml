@@ -1,4 +1,0 @@
-secrets:
-  api_key: !secret api_key
-
-automations: !include automations.yaml
