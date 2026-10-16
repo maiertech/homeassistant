@@ -1,6 +1,1 @@
 pnpm-lock.yaml
-
-# Automations are copied into Home Assistant as-is; Prettier would re-wrap
-# their Jinja templates.
-automations/heating_office_tm.yaml
-automations/humidity_office_tm.yaml
