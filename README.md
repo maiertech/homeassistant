@@ -1,7 +1,9 @@
 # Home Assistant
 
 My Home Assistant automations are in `automations/`. UI helpers required by
-those automations are documented individually in `helpers/`.
+those automations are documented individually in `helpers/`. Reusable automation
+blueprints are in `blueprints/`, with the values for each instance documented in
+the blueprint's comments. Domain terms are defined in `GLOSSARY.md`.
 
 ## Setup
 

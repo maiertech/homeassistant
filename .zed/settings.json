@@ -1,5 +1,14 @@
 {
   "file_types": {
     "Git Ignore": [".prettierignore"]
+  },
+  "lsp": {
+    "yaml-language-server": {
+      "settings": {
+        "yaml": {
+          "customTags": ["!input scalar"]
+        }
+      }
+    }
   }
 }
