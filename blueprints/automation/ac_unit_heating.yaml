@@ -1,0 +1,203 @@
+blueprint:
+  name: AC unit heating
+  description: >-
+    During the heating season, use an occupancy entity to switch between an
+    unoccupied and an occupied target temperature, and heat with an AC unit.
+    Manual cooling, drying, and fan-only modes override heating control. The AC
+    unit is forced off during the night lockout during the heating season.
+  domain: automation
+  min_version: 2026.10.2
+  input:
+    climate_entity:
+      name: AC unit
+      description: Climate entity of the AC unit to control.
+      selector:
+        entity:
+          filter:
+            - domain: climate
+    temperature_sensor:
+      name: Room temperature sensor
+      description: Room temperature used to decide when to heat.
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+    occupancy_entity:
+      name: Occupancy entity
+      description: On while the room is occupied.
+      selector:
+        entity:
+          filter:
+            - domain:
+                - input_boolean
+                - binary_sensor
+    heating_season_entity:
+      name: Heating season entity
+      description: On during the heating season.
+      default: binary_sensor.heating_season
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+    unoccupied_target_temp:
+      name: Unoccupied target temperature
+      description: Target temperature while the room is unoccupied.
+      default: 16
+      selector:
+        number:
+          min: 15
+          max: 18
+          step: 0.5
+          unit_of_measurement: °C
+    occupied_target_temp:
+      name: Occupied target temperature
+      description: Target temperature while the room is occupied.
+      default: 22
+      selector:
+        number:
+          min: 19
+          max: 23
+          step: 0.5
+          unit_of_measurement: °C
+    night_lockout_start:
+      name: Night lockout start
+      description:
+        Time the night lockout starts. The AC unit is forced off from this time.
+      default: "00:00:00"
+      selector:
+        time: {}
+    night_lockout_end:
+      name: Night lockout end
+      description:
+        Time the night lockout ends. Heating control resumes at this time.
+      default: "07:00:00"
+      selector:
+        time: {}
+
+triggers:
+  - trigger: state
+    entity_id:
+      - !input heating_season_entity
+      - !input occupancy_entity
+      - !input temperature_sensor
+      - !input climate_entity
+  - trigger: homeassistant
+    event: start
+  - trigger: time
+    at: !input night_lockout_start
+  - trigger: time
+    at: !input night_lockout_end
+
+actions:
+  - variables:
+      climate_entity: !input climate_entity
+      temperature_sensor: !input temperature_sensor
+      occupancy_entity: !input occupancy_entity
+      heating_season_entity: !input heating_season_entity
+      unoccupied_target_temp: !input unoccupied_target_temp
+      occupied_target_temp: !input occupied_target_temp
+      target_temp: >-
+        {{ occupied_target_temp if is_state(occupancy_entity, 'on')
+           else unoccupied_target_temp }}
+      heat_call_temp_offset: 2
+      target_temp_tolerance: 1
+      heat_call_temp:
+        "{{ (target_temp | float) + (heat_call_temp_offset | float) }}"
+
+  # During heating season, the night lockout takes priority.
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input heating_season_entity
+            state: "on"
+          - condition: time
+            after: !input night_lockout_start
+            before: !input night_lockout_end
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ not is_state(climate_entity, 'off') }}"
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_entity
+                data:
+                  hvac_mode: "off"
+          - stop: "Night lockout: AC unit remains off during the lockout."
+
+  # Preserve manually selected cooling, drying, and fan-only modes.
+  - condition: template
+    value_template: >-
+      {{ not (is_state(heating_season_entity, 'on') and
+              states(climate_entity) in ['cool', 'dry', 'fan_only']) }}
+
+  - choose:
+      # Edge case: we are heating while heating season ends.
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_state(heating_season_entity, 'on') }}"
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input climate_entity
+                state: heat
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_entity
+                data:
+                  hvac_mode: "off"
+
+      # Edge case: the room temperature is not available.
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_number(states(temperature_sensor)) }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ not is_state(climate_entity, 'off') }}"
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_entity
+                data:
+                  hvac_mode: "off"
+
+      # Start heating when the room is at least the tolerance below target.
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ (states(temperature_sensor) | float) <=
+                 (target_temp | float - (target_temp_tolerance | float)) }}
+          - condition: template
+            value_template: >-
+              {{ not is_state(climate_entity, 'heat') or
+                 not is_number(state_attr(climate_entity, 'temperature')) or
+                 (state_attr(climate_entity, 'temperature') | float) !=
+                   (heat_call_temp | float) }}
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: heat
+              temperature: "{{ heat_call_temp }}"
+
+      # Stop heating when the room reaches the tolerance above target.
+      - conditions:
+          - condition: state
+            entity_id: !input climate_entity
+            state: heat
+          - condition: template
+            value_template: >-
+              {{ is_number(states(temperature_sensor)) and
+                 (states(temperature_sensor) | float) >=
+                 (target_temp | float + (target_temp_tolerance | float)) }}
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: "off"
+
+mode: restart
