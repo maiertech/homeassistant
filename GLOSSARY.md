@@ -6,27 +6,27 @@
 fan-only mode. Heating control applies to AC units only.
 
 **Heating season**: The part of the year during which rooms are heated. Heating
-control runs only during the heating season.
+control runs only during the heating season, from 1 October to 31 March.
 
 **Target temperature**: The room temperature that heating aims to hold. It
-depends on whether the room is occupied.
+depends on whether the room is occupied and whether the night setback is in
+effect.
 
 **Occupied**: The room is in use, so the occupied target temperature applies.
 
 **Unoccupied**: The room is not in use, so the unoccupied target temperature
 applies.
 
-**Tolerance**: How far the room temperature may move from the target temperature
-before heating starts or stops.
+**Night setback**: A time window during the heating season in which the
+unoccupied target temperature applies, even when the room is occupied.
 
-**Heat call**: A request for heat sent to an AC unit, set above the target
-temperature.
+**Setpoint**: The temperature the AC unit is set to heat to. Heating control
+moves it in whole-degree steps, based on the room temperature, so the room
+reaches and holds the target temperature.
 
-**Heat call offset**: The amount by which a heat call is set above the target
-temperature.
+**Deadband**: A band around the target temperature within which the setpoint is
+left unchanged.
 
-**Night lockout**: A time window during the heating season in which the AC unit
-stays off.
-
-**Manual override**: A cooling, drying, or fan-only mode that a person selects.
-Heating control leaves it alone.
+**Manual override**: A mode other than heat that a person selects, including
+off. Heating control leaves it alone until the next start or end of the night
+setback, when heating resumes.
