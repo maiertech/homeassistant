@@ -13,8 +13,13 @@ configuration: https://www.home-assistant.io/docs/.
 
 ## Verification
 
-After changing anything in this repository, run `pnpm verify`. Resolve any
-failures before considering the work complete.
+After changing anything in this repository, run `pnpm verify` before committing.
+Resolve any failures before considering the work complete. The pre-commit hook
+checks only staged files: Prettier on Markdown and YAML, and ESLint on YAML. The
+pre-push hook runs `pnpm verify`, which checks the whole repository.
+
+Never bypass the Git hooks, including with `--no-verify` or by setting
+`HUSKY=0`. If a hook fails, fix the cause and commit again.
 
 ## Writing style
 
