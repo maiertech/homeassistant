@@ -5,11 +5,21 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint .",
-    "verify": "pnpm lint"
+    "verify": "pnpm lint",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.md": "prettier --check",
+    "*.{yaml,yml}": [
+      "prettier --check",
+      "eslint"
+    ]
   },
   "devDependencies": {
     "eslint": "^10.12.0",
     "eslint-plugin-yml": "^3.9.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.9.10"
   }
 }
