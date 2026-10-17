@@ -20,13 +20,11 @@ applies.
 **Night setback**: A time window during the heating season in which the
 unoccupied target temperature applies, even when the room is occupied.
 
-**Setpoint**: The temperature the AC unit is set to heat to. Heating control
-moves it in whole-degree steps, based on the room temperature, so the room
-reaches and holds the target temperature.
+**Setpoint**: The temperature the AC unit is set to heat to.
 
 **Deadband**: A band around the target temperature within which the setpoint is
 left unchanged.
 
 **Manual override**: A mode other than heat that a person selects, including
 off. Heating control leaves it alone until the next start or end of the night
-setback, when heating resumes.
+setback, or the start of the heating season, when heating resumes.
