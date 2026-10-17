@@ -9,7 +9,8 @@ blueprint:
     blueprint never changes the unit's mode, so select heat to start heating and
     another mode to stop.
   domain: automation
-  min_version: 2026.10.2
+  homeassistant:
+    min_version: 2026.10.2
   input:
     climate_entity:
       name: AC unit
