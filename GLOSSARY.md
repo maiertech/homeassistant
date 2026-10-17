@@ -6,7 +6,8 @@
 fan-only mode. Heating control applies to AC units only.
 
 **Heating season**: The part of the year during which rooms are heated. Heating
-control runs only during the heating season, from 1 October to 31 March.
+control runs only while the AC unit is in heat mode, so a person starts and ends
+the heating season by selecting heat or another mode.
 
 **Target temperature**: The room temperature that heating aims to hold. It
 depends on whether the room is occupied.
@@ -20,7 +21,3 @@ applies.
 
 **Deadband**: A band around the target temperature within which the setpoint is
 left unchanged.
-
-**Manual override**: A mode other than heat that a person selects, including
-off. Heating control leaves it alone until occupancy changes or the heating
-season starts, when heating resumes.

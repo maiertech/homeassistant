@@ -1,12 +1,11 @@
 blueprint:
   name: AC unit heating
   description: >-
-    During the heating season (1 October to 31 March), hold the room at its
-    target temperature by stepping the AC unit's setpoint up or down by 1 °C,
-    using a room temperature sensor. The target is the occupied or unoccupied
-    target, depending on the occupancy entity. The unit stays in heat mode and
-    is never turned off. A manually selected mode other than heat holds until
-    occupancy changes or the heating season starts, then heating resumes.
+    While the AC unit is in heat mode, hold the room at its target temperature
+    by stepping the unit's setpoint up or down by 1 °C every 15 minutes, using a
+    room temperature sensor. The target is the occupied or unoccupied target,
+    depending on the occupancy entity. The blueprint never changes the unit's
+    mode, so select heat to start heating and another mode to stop.
   domain: automation
   min_version: 2026.10.2
   input:
@@ -57,12 +56,6 @@ blueprint:
 triggers:
   - trigger: time_pattern
     minutes: "/15"
-  - trigger: state
-    entity_id: !input occupancy_entity
-    id: occupancy_change
-  - trigger: time
-    at: "00:00:00"
-    id: season_start
   - trigger: homeassistant
     event: start
 
@@ -88,43 +81,12 @@ actions:
         {{ [[unoccupied_target_temp | float, setpoint_min] | max, setpoint_max]
         | min }}
 
-  # The heating season is hard-coded to 1 October to 31 March.
-  - if:
-      - condition: template
-        value_template: "{{ now().month not in [10, 11, 12, 1, 2, 3] }}"
-    then:
-      - stop: "Outside the heating season: AC unit is left alone."
-
-  # A manual mode holds until occupancy changes or the heating season starts.
-  - if:
-      - condition: template
-        value_template: "{{ not is_state(climate_entity, 'heat') }}"
-      - condition: template
-        value_template: >-
-          {{ not (trigger.id == 'occupancy_change' or
-                  (trigger.id == 'season_start' and now().month == 10 and
-                   now().day == 1)) }}
-    then:
-      - stop:
-          "Manual override holds until occupancy changes or the heating season
-          starts."
-
+  # The blueprint only adjusts the setpoint while the unit is in heat mode.
   - if:
       - condition: template
         value_template: "{{ not is_state(climate_entity, 'heat') }}"
     then:
-      - action: climate.set_hvac_mode
-        target:
-          entity_id: !input climate_entity
-        data:
-          hvac_mode: heat
-
-  # Occupancy changes only release the override. The setpoint steps on the 15-minute run.
-  - if:
-      - condition: template
-        value_template: "{{ trigger.id == 'occupancy_change' }}"
-    then:
-      - stop: "Occupancy changed: the setpoint steps on the next 15-minute run."
+      - stop: "AC unit is not in heat mode: leaving it alone."
 
   # Without a fresh room reading, use the unit's own sensor at the unoccupied target, with no correction.
   - if:
