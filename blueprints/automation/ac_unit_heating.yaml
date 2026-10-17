@@ -3,10 +3,10 @@ blueprint:
   description: >-
     During the heating season (1 October to 31 March), hold the room at its
     target temperature by stepping the AC unit's setpoint up or down by 1 °C,
-    using a room temperature sensor. The unit stays in heat mode and is never
-    turned off. During the night setback, the unoccupied target applies even
-    when the room is occupied. A manually selected mode other than heat holds
-    until the next night setback boundary, then heating resumes.
+    using a room temperature sensor. The target is the occupied or unoccupied
+    target, depending on the occupancy entity. The unit stays in heat mode and
+    is never turned off. A manually selected mode other than heat holds until
+    occupancy changes or the heating season starts, then heating resumes.
   domain: automation
   min_version: 2026.10.2
   input:
@@ -35,9 +35,7 @@ blueprint:
                 - binary_sensor
     unoccupied_target_temp:
       name: Unoccupied target temperature
-      description:
-        Target temperature while the room is unoccupied. Also applies during the
-        night setback.
+      description: Target temperature while the room is unoccupied.
       default: 16
       selector:
         number:
@@ -55,32 +53,13 @@ blueprint:
           max: 23
           step: 0.5
           unit_of_measurement: °C
-    night_setback_start:
-      name: Night setback start
-      description:
-        Time the night setback starts. Manual overrides are cleared from this
-        time.
-      default: "00:00:00"
-      selector:
-        time: {}
-    night_setback_end:
-      name: Night setback end
-      description:
-        Time the night setback ends. Manual overrides are cleared from this
-        time.
-      default: "07:00:00"
-      selector:
-        time: {}
 
 triggers:
   - trigger: time_pattern
     minutes: "/15"
-  - trigger: time
-    at: !input night_setback_start
-    id: boundary
-  - trigger: time
-    at: !input night_setback_end
-    id: boundary
+  - trigger: state
+    entity_id: !input occupancy_entity
+    id: occupancy_change
   - trigger: time
     at: "00:00:00"
     id: season_start
@@ -94,19 +73,13 @@ actions:
       occupancy_entity: !input occupancy_entity
       unoccupied_target_temp: !input unoccupied_target_temp
       occupied_target_temp: !input occupied_target_temp
-      night_setback_start: !input night_setback_start
-      night_setback_end: !input night_setback_end
       deadband: 0.5
       setpoint_min: 17
       setpoint_max: 25
       stale_after_seconds: 3600
       target_temp: >-
-        {% set now_time = now().strftime('%H:%M:%S') %} {% set in_night_setback
-        = (night_setback_start <= now_time < night_setback_end) if
-        night_setback_start < night_setback_end else (now_time >=
-        night_setback_start or now_time < night_setback_end) %} {{
-        unoccupied_target_temp if in_night_setback or not
-        is_state(occupancy_entity, 'on') else occupied_target_temp }}
+        {{ occupied_target_temp if is_state(occupancy_entity, 'on')
+           else unoccupied_target_temp }}
       current_setpoint: >-
         {{ state_attr(climate_entity, 'temperature') | float
            if is_number(state_attr(climate_entity, 'temperature'))
@@ -122,17 +95,19 @@ actions:
     then:
       - stop: "Outside the heating season: AC unit is left alone."
 
-  # A manual mode holds until the next night setback boundary.
+  # A manual mode holds until occupancy changes or the heating season starts.
   - if:
       - condition: template
         value_template: "{{ not is_state(climate_entity, 'heat') }}"
       - condition: template
         value_template: >-
-          {{ not (trigger.id == 'boundary' or
+          {{ not (trigger.id == 'occupancy_change' or
                   (trigger.id == 'season_start' and now().month == 10 and
-          now().day == 1)) }}
+                   now().day == 1)) }}
     then:
-      - stop: "Manual override holds until the next night setback boundary."
+      - stop:
+          "Manual override holds until occupancy changes or the heating season
+          starts."
 
   - if:
       - condition: template
@@ -143,6 +118,13 @@ actions:
           entity_id: !input climate_entity
         data:
           hvac_mode: heat
+
+  # Occupancy changes only release the override. The setpoint steps on the 15-minute run.
+  - if:
+      - condition: template
+        value_template: "{{ trigger.id == 'occupancy_change' }}"
+    then:
+      - stop: "Occupancy changed: the setpoint steps on the next 15-minute run."
 
   # Without a fresh room reading, use the unit's own sensor at the unoccupied target, with no correction.
   - if:
@@ -171,9 +153,10 @@ actions:
   - variables:
       new_setpoint: >-
         {% set room = states(temperature_sensor) | float %} {% set step = 1 if
-        room < target_temp | float - deadband else -1 if room > target_temp |
-        float + deadband else 0 %} {{ [[current_setpoint | float + step,
-        setpoint_min] | max, setpoint_max] | min }}
+        room < target_temp | float - deadband
+           else -1 if room > target_temp | float + deadband else 0 %}
+        {{ [[current_setpoint | float + step, setpoint_min] | max, setpoint_max]
+        | min }}
 
   - if:
       - condition: template
