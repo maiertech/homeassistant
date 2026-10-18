@@ -110,16 +110,14 @@ actions:
           entity_id: !input climate_entity
         data:
           hvac_mode: "off"
-      - stop: "Heating switch was turned off: turn off AC indoor unit."
+      - stop: "Heating switch was turned off: turn off AC."
 
-  # Periodic runs leave the AC indoor unit alone unless the heating switch is on.
   - if:
       - condition: template
         value_template: "{{ not is_state(heating_switch, 'on') }}"
     then:
-      - stop: "Heating switch is off: leave the AC indoor unit alone."
+      - stop: "Heating switch is off: leave the AC alone."
 
-  # Turning the switch on selects heat and applies the target at once.
   - if:
       - condition: trigger
         id: switch_on
@@ -130,9 +128,8 @@ actions:
         data:
           hvac_mode: heat
           temperature: "{{ target_temp }}"
-      - stop: "Heat selected and target temperature set on the AC indoor unit."
+      - stop: "Heating switch turned on: turn on heat and set target temp."
 
-  # A change in occupancy applies the new target at once.
   - if:
       - condition: trigger
         id: occupancy_changed
@@ -142,7 +139,7 @@ actions:
           entity_id: !input climate_entity
         data:
           temperature: "{{ target_temp }}"
-      - stop: "Target temperature set on the AC indoor unit."
+      - stop: "Occupancy has changed: new target temp set on the AC."
 
   # Periodic control keeps the unit in heat mode.
   - if:
