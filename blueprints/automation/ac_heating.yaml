@@ -31,7 +31,8 @@ blueprint:
       - If the AC is unavailable or unknown, leave the set temperature unchanged.
       - A set temperature changed by hand will be corrected eventually.
 
-    - **When Home Assistant starts while the room heating switch is on:** run the
+    - **When Home Assistant starts while the room heating switch is on:** if the
+      AC is not in heat mode, turn the room heating switch off. Otherwise, run the
       15-minute check.
   domain: automation
   homeassistant:
@@ -111,6 +112,7 @@ triggers:
     minutes: "/15"
   - trigger: homeassistant
     event: start
+    id: ha_started
 
 actions:
   - variables:
@@ -126,6 +128,10 @@ actions:
       target_temp: >-
         {{ occupied_target_temp if is_state(occupancy_entity, 'on')
            else unoccupied_target_temp }}
+      ac_left_heat: >-
+        {{ not is_state(climate_entity, 'heat')
+           and not is_state(climate_entity, 'unavailable')
+           and not is_state(climate_entity, 'unknown') }}
 
   - choose:
       # The unit is switched off only while it is still in heat mode.
@@ -180,10 +186,7 @@ actions:
         sequence:
           - if:
               - condition: template
-                value_template: >-
-                  {{ not is_state(climate_entity, 'heat')
-                     and not is_state(climate_entity, 'unavailable')
-                     and not is_state(climate_entity, 'unknown') }}
+                value_template: "{{ ac_left_heat }}"
             then:
               - action: input_boolean.turn_off
                 target:
@@ -193,6 +196,19 @@ actions:
 
     # Periodic runs and Home Assistant start: step the set temperature.
     default:
+      - if:
+          - condition: trigger
+            id: ha_started
+          - condition: template
+            value_template: "{{ ac_left_heat }}"
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input heating_switch
+          - stop:
+              "Home Assistant started and the AC is not in heat: heating switch
+              turned off."
+
       - if:
           - condition: state
             entity_id: !input climate_entity
