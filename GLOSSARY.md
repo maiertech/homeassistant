@@ -5,9 +5,9 @@
 **AC unit**: An air-conditioning unit that can heat, cool, dry, and run in
 fan-only mode. Heating control applies to AC units only.
 
-**Heating season**: The part of the year during which rooms are heated. Heating
-control runs only while the AC unit is in heat mode, so a person starts and ends
-the heating season by selecting heat or another mode.
+**AC heating switch**: The `input_boolean` that turns heating on or off for a
+room. Turning it on selects heat and applies the target temperature. Turning it
+off selects off on the AC unit.
 
 **Target temperature**: The room temperature that heating aims to hold. It
 depends on whether the room is occupied.
