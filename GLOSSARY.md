@@ -2,26 +2,23 @@
 
 ## Heating
 
-**AC indoor unit**: The indoor part of an air-conditioning unit. It can heat,
-cool, dry, and run in fan-only mode. Heating control applies to AC indoor units
-only, never to the outdoor unit.
+**AC**: The indoor unit of a single split or multi-split air-conditioning
+system. It can heat, cool, dry, and run in fan-only mode.
 
-**AC heating switch**: The `input_boolean` that turns heating on or off for a
-room. Turning it on selects heat and applies the target temperature. Turning it
-off selects off on the AC indoor unit.
+**Room heating switch**: A toggle switch for a specific room that turns heating
+on or off.
 
-**Target temperature**: The room temperature that heating aims to achieve, as
-measured by the room temperature sensor. It depends on whether the room is
-occupied.
+**Target temperature**: The room temperature that the room should reach and
+maintain, measured by the room temperature sensor. The target temperature can
+vary based on whether the room is occupied or not.
 
-**Occupied**: The room is in use, so the occupied target temperature applies.
+**Occupied**: A room is occupied when there is at least one person in the room.
 
-**Unoccupied**: The room is not in use, so the unoccupied target temperature
-applies.
+**Unoccupied**: A room is unoccupied when there is no person in the room.
 
-**Set temperature**: The temperature the AC indoor unit is told to aim for. When
-the AC heating switch turns on, the set temperature is initially the target
-temperature. While heating, it is stepped up or down.
+**Set temperature**: The temperature that is dialed into the AC. The ACs will
+try to heat to this temperature and keep the room at this temperature (measured
+with its own sensor).
 
 **Deadband**: A band around the target temperature within which the set
-temperature is left unchanged.
+temperature on the AC is left unchanged.
