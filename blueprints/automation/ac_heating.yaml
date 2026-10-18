@@ -35,7 +35,7 @@ blueprint:
             - domain: climate
     temperature_sensor:
       name: Room temperature sensor
-      description: Room temperature used to decide the setpoint.
+      description: Room temperature used to decide the set temperature.
       selector:
         entity:
           filter:
@@ -62,7 +62,7 @@ blueprint:
       default: 17
       selector:
         number:
-          # The Toshiba integration rejects heat setpoints below 17 °C.
+          # The Toshiba integration rejects set temperatures below 17 °C.
           min: 17
           max: 19
           step: 0.5
@@ -175,7 +175,7 @@ actions:
               entity_id: !input heating_switch
           - stop: "AC left heat mode: heating switch turned off."
 
-      # Without a fresh room reading, leave the setpoint unchanged.
+      # Without a fresh room reading, leave the set temperature unchanged.
       - if:
           - condition: template
             value_template: >-
@@ -185,39 +185,40 @@ actions:
               stale_after_seconds }}
         then:
           - stop:
-              "Room temperature is unavailable or stale: leaving the setpoint
-              unchanged."
+              "Room temperature is unavailable or stale: leaving the set
+              temperature unchanged."
 
-      # Step the setpoint by 1 °C toward target, never above target + max_above_target.
-      # Raise it only once the unit has reached its own setpoint, so the unit is not
-      # heating the room more without a higher setpoint.
+      # Step the set temperature by 1 °C toward target, never above target + max_above_target.
+      # Raise it only once the unit has reached its own set temperature, so the unit is not
+      # heating the room more without a higher set temperature.
       - variables:
-          current_setpoint: >-
+          current_set_temperature: >-
             {{ state_attr(climate_entity, 'temperature') | float
                if is_number(state_attr(climate_entity, 'temperature'))
                else target_temp | float }}
 
       - variables:
-          new_setpoint: >-
+          new_set_temperature: >-
             {% set room = states(temperature_sensor) | float %} {% set unit_temp
             = state_attr(climate_entity, 'current_temperature') %} {% set
             unit_reached = is_number(unit_temp)
-               and unit_temp | float >= current_setpoint | float %}
+               and unit_temp | float >= current_set_temperature | float %}
             {% set step = 1 if room < target_temp | float - deadband and
             unit_reached
                else -1 if room > target_temp | float + deadband else 0 %}
-            {{ [current_setpoint | float + step,
+            {{ [current_set_temperature | float + step,
                 target_temp | float + max_above_target] | min }}
 
       - if:
           - condition: template
             value_template:
-              "{{ new_setpoint | float != current_setpoint | float }}"
+              "{{ new_set_temperature | float != current_set_temperature | float
+              }}"
         then:
           - action: climate.set_temperature
             target:
               entity_id: !input climate_entity
             data:
-              temperature: "{{ new_setpoint }}"
+              temperature: "{{ new_set_temperature }}"
 
 mode: restart
