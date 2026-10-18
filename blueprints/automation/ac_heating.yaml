@@ -107,7 +107,7 @@ triggers:
     id: occupancy_changed
   - trigger: state
     entity_id: !input climate_entity
-    id: mode_changed
+    id: hvac_mode_changed
   - trigger: time_pattern
     minutes: "/15"
   - trigger: homeassistant
@@ -128,7 +128,8 @@ actions:
       target_temp: >-
         {{ occupied_target_temp if is_state(occupancy_entity, 'on')
            else unoccupied_target_temp }}
-      ac_left_heat: >-
+      # True only for a known mode other than heat, not unavailable or unknown.
+      ac_in_mode_other_than_heat: >-
         {{ not is_state(climate_entity, 'heat')
            and not is_state(climate_entity, 'unavailable')
            and not is_state(climate_entity, 'unknown') }}
@@ -182,11 +183,11 @@ actions:
 
       - conditions:
           - condition: trigger
-            id: mode_changed
+            id: hvac_mode_changed
         sequence:
           - if:
               - condition: template
-                value_template: "{{ ac_left_heat }}"
+                value_template: "{{ ac_in_mode_other_than_heat }}"
             then:
               - action: input_boolean.turn_off
                 target:
@@ -200,7 +201,7 @@ actions:
           - condition: trigger
             id: ha_started
           - condition: template
-            value_template: "{{ ac_left_heat }}"
+            value_template: "{{ ac_in_mode_other_than_heat }}"
         then:
           - action: input_boolean.turn_off
             target:
