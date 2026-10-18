@@ -28,7 +28,7 @@ blueprint:
         temperature by 1 °C.
       - If the room temperature reading is missing or more than 15 minutes old,
         leave the set temperature unchanged.
-      - A set temperature changed by hand is corrected by the next run.
+      - A set temperature changed by hand will be corrected eventually.
 
     - **When Home Assistant starts while the room heating switch is on:** run the
       15-minute check.
@@ -105,6 +105,7 @@ triggers:
     id: occupancy_changed
   - trigger: state
     entity_id: !input climate_entity
+    id: mode_changed
   - trigger: time_pattern
     minutes: "/15"
   - trigger: homeassistant
@@ -172,20 +173,25 @@ actions:
               temperature: "{{ target_temp }}"
           - stop: "Occupancy has changed: new target temp set on the AC."
 
-    # Periodic runs and mode changes: any mode other than heat ends heating.
-    default:
-      - if:
-          - condition: template
-            value_template: >-
-              {{ not is_state(climate_entity, 'heat')
-                 and not is_state(climate_entity, 'unavailable')
-                 and not is_state(climate_entity, 'unknown') }}
-        then:
-          - action: input_boolean.turn_off
-            target:
-              entity_id: !input heating_switch
-          - stop: "AC left heat mode: heating switch turned off."
+      - conditions:
+          - condition: trigger
+            id: mode_changed
+        sequence:
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ not is_state(climate_entity, 'heat')
+                     and not is_state(climate_entity, 'unavailable')
+                     and not is_state(climate_entity, 'unknown') }}
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: !input heating_switch
+          - stop:
+              "HVAC mode changed: turned heating switch off if the AC left heat."
 
+    # Periodic runs and Home Assistant start: step the set temperature.
+    default:
       # Without a fresh room reading, leave the set temperature unchanged.
       - if:
           - condition: template
