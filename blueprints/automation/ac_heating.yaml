@@ -3,11 +3,12 @@ blueprint:
   description: >-
     While the AC heating switch is on, heat the room to its target temperature.
     Turning the switch on selects heat and sets the target, which is the
-    occupied or unoccupied target depending on the occupancy entity. Changes in
-    occupancy apply the new target immediately. Every 15 minutes the unit is
-    kept in heat mode and its setpoint steps 1 °C toward the target, using a
-    room temperature sensor, and never goes more than 2 °C above target. Turning
-    the switch off selects off.
+    occupied or unoccupied target temperature depending on the occupancy entity.
+    Changes in occupancy apply the new target immediately. Every 15 minutes the
+    unit is kept in heat mode. If the room is below target and the unit has
+    reached its own setpoint, the setpoint steps up 1 °C, never more than 2 °C
+    above target. If the room is above target, the setpoint steps down 1 °C.
+    Turning the switch off selects off.
   domain: automation
   homeassistant:
     min_version: 2026.10.2
@@ -159,6 +160,8 @@ actions:
           unchanged."
 
   # Step the setpoint by 1 °C toward target, never above target + max_above_target.
+  # Raise it only once the unit has reached its own setpoint, so the unit is not
+  # heating the room more without a higher setpoint.
   - variables:
       current_setpoint: >-
         {{ state_attr(climate_entity, 'temperature') | float
@@ -167,8 +170,12 @@ actions:
 
   - variables:
       new_setpoint: >-
-        {% set room = states(temperature_sensor) | float %} {% set step = 1 if
-        room < target_temp | float - deadband
+        {% set room = states(temperature_sensor) | float %} {% set unit_temp =
+        state_attr(climate_entity, 'current_temperature') %} {% set unit_reached
+        = is_number(unit_temp)
+           and unit_temp | float >= current_setpoint | float %}
+        {% set step = 1 if room < target_temp | float - deadband and
+        unit_reached
            else -1 if room > target_temp | float + deadband else 0 %}
         {{ [current_setpoint | float + step,
             target_temp | float + max_above_target] | min }}
