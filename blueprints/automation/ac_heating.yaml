@@ -14,8 +14,8 @@ blueprint:
     min_version: 2026.10.2
   input:
     climate_entity:
-      name: AC unit
-      description: Climate entity of the AC unit to control.
+      name: AC indoor unit
+      description: Climate entity of the AC indoor unit to control.
       selector:
         entity:
           filter:
@@ -39,7 +39,8 @@ blueprint:
     heating_switch:
       name: AC heating switch
       description:
-        On while the room is heated. Turning it off selects off on the AC unit.
+        On while the room is heated. Turning it off selects off on the AC indoor
+        unit.
       selector:
         entity:
           filter:
@@ -111,14 +112,14 @@ actions:
           entity_id: !input climate_entity
         data:
           hvac_mode: "off"
-      - stop: "AC heating switch is off: AC unit selected off."
+      - stop: "AC heating switch is off: AC indoor unit selected off."
 
-  # Periodic runs leave the AC unit alone unless the switch is on.
+  # Periodic runs leave the AC indoor unit alone unless the switch is on.
   - if:
       - condition: template
         value_template: "{{ not is_state(heating_switch, 'on') }}"
     then:
-      - stop: "AC heating switch is off: leaving the AC unit alone."
+      - stop: "AC heating switch is off: leaving the AC indoor unit alone."
 
   # Turning the switch on, or a change in occupancy, applies the target at once.
   - if:
