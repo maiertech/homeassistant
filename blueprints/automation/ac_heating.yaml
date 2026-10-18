@@ -135,7 +135,7 @@ actions:
            and not is_state(climate_entity, 'unknown') }}
 
   - choose:
-      # The unit is switched off only while it is still in heat mode.
+      # Turn off the AC but only when it's HVAC mode is heat.
       - conditions:
           - condition: trigger
             id: heating_switch_off
@@ -150,7 +150,7 @@ actions:
                   entity_id: !input climate_entity
                 data:
                   hvac_mode: "off"
-          - stop: "Heating switch was turned off: turn off AC."
+          - stop: "Room heating switch was turned off, therefore turn off AC."
 
       - conditions:
           - condition: template
@@ -168,7 +168,9 @@ actions:
             data:
               hvac_mode: heat
               temperature: "{{ target_temp }}"
-          - stop: "Heating switch turned on: turn on heat and set target temp."
+          - stop:
+              "Heating switch was turned on: set HVAC mode to `heat` and set
+              temperature to target temperature."
 
       - conditions:
           - condition: trigger
@@ -179,7 +181,7 @@ actions:
               entity_id: !input climate_entity
             data:
               temperature: "{{ target_temp }}"
-          - stop: "Occupancy has changed: new target temp set on the AC."
+          - stop: "Occupancy has changed: set new set temperature on AC."
 
       - conditions:
           - condition: trigger
@@ -193,9 +195,10 @@ actions:
                 target:
                   entity_id: !input heating_switch
           - stop:
-              "HVAC mode changed: turned heating switch off if the AC left heat."
+              "HVAC mode has changed to something other than heat: turn room
+              heating switch off."
 
-    # Periodic runs and Home Assistant start: step the set temperature.
+    # Periodic runs and Home Assistant start.
     default:
       - if:
           - condition: trigger
@@ -207,8 +210,8 @@ actions:
             target:
               entity_id: !input heating_switch
           - stop:
-              "Home Assistant started and the AC is not in heat: heating switch
-              turned off."
+              "Home Assistant re-started and the AC is not in heatmode: turn off
+              heating switch."
 
       - if:
           - condition: state
@@ -218,10 +221,10 @@ actions:
               - unknown
         then:
           - stop:
-              "AC is unavailable or unknown: leaving the set temperature
+              "AC is unavailable or unknown: leave the set temperature
               unchanged."
 
-      # Without a fresh room reading, leave the set temperature unchanged.
+      # Room sensor not available.
       - if:
           - condition: template
             value_template: >-
@@ -231,12 +234,9 @@ actions:
               stale_after_seconds }}
         then:
           - stop:
-              "Room temperature is unavailable or stale: leaving the set
-              temperature unchanged."
+              "Room temperature is unavailable or stale: leave set temperature
+              unchanged."
 
-      # Step the set temperature by 1 °C toward target, never above target + max_above_target.
-      # Raise it only once the unit has reached its own set temperature, so the unit is not
-      # heating the room more without a higher set temperature.
       - variables:
           current_set_temperature: >-
             {{ state_attr(climate_entity, 'temperature') | float
