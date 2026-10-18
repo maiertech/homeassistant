@@ -82,13 +82,10 @@ triggers:
     id: occupancy_changed
   - trigger: state
     entity_id: !input climate_entity
-    id: mode_changed
   - trigger: time_pattern
     minutes: "/15"
-    id: periodic
   - trigger: homeassistant
     event: start
-    id: periodic
 
 actions:
   - variables:
@@ -105,106 +102,110 @@ actions:
         {{ occupied_target_temp if is_state(occupancy_entity, 'on')
            else unoccupied_target_temp }}
 
-  - if:
-      - condition: trigger
-        id: switch_off
-    then:
-      - if:
-          - condition: state
-            entity_id: !input climate_entity
-            state: heat
-        then:
-          - action: climate.set_hvac_mode
+  - choose:
+      # The unit is switched off only while it is still in heat mode.
+      - conditions:
+          - condition: trigger
+            id: switch_off
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input climate_entity
+                state: heat
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_entity
+                data:
+                  hvac_mode: "off"
+          - stop: "Heating switch was turned off: turn off AC."
+
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_state(heating_switch, 'on') }}"
+        sequence:
+          - stop: "Heating switch is off: leave the AC alone."
+
+      - conditions:
+          - condition: trigger
+            id: switch_on
+        sequence:
+          - action: climate.set_temperature
             target:
               entity_id: !input climate_entity
             data:
-              hvac_mode: "off"
-      - stop: "Heating switch was turned off: turn off AC."
+              hvac_mode: heat
+              temperature: "{{ target_temp }}"
+          - stop: "Heating switch turned on: turn on heat and set target temp."
 
-  - if:
-      - condition: template
-        value_template: "{{ not is_state(heating_switch, 'on') }}"
-    then:
-      - stop: "Heating switch is off: leave the AC alone."
+      - conditions:
+          - condition: trigger
+            id: occupancy_changed
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: "{{ target_temp }}"
+          - stop: "Occupancy has changed: new target temp set on the AC."
 
-  - if:
-      - condition: trigger
-        id: switch_on
-    then:
-      - action: climate.set_temperature
-        target:
-          entity_id: !input climate_entity
-        data:
-          hvac_mode: heat
-          temperature: "{{ target_temp }}"
-      - stop: "Heating switch turned on: turn on heat and set target temp."
+    # Periodic runs and mode changes: any mode other than heat ends heating.
+    default:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ not is_state(climate_entity, 'heat')
+                 and not is_state(climate_entity, 'unavailable')
+                 and not is_state(climate_entity, 'unknown') }}
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input heating_switch
+          - stop: "AC left heat mode: heating switch turned off."
 
-  - if:
-      - condition: trigger
-        id: occupancy_changed
-    then:
-      - action: climate.set_temperature
-        target:
-          entity_id: !input climate_entity
-        data:
-          temperature: "{{ target_temp }}"
-      - stop: "Occupancy has changed: new target temp set on the AC."
+      # Without a fresh room reading, leave the setpoint unchanged.
+      - if:
+          - condition: template
+            value_template: >-
+              {{ not is_number(states(temperature_sensor))
+                 or (now() -
+              states[temperature_sensor].last_reported).total_seconds() >
+              stale_after_seconds }}
+        then:
+          - stop:
+              "Room temperature is unavailable or stale: leaving the setpoint
+              unchanged."
 
-  # Any mode other than heat means someone took over the AC, so heating ends.
-  - if:
-      - condition: template
-        value_template: >-
-          {{ not is_state(climate_entity, 'heat')
-             and not is_state(climate_entity, 'unavailable')
-             and not is_state(climate_entity, 'unknown') }}
-    then:
-      - action: input_boolean.turn_off
-        target:
-          entity_id: !input heating_switch
-      - stop: "AC left heat mode: heating switch turned off."
+      # Step the setpoint by 1 °C toward target, never above target + max_above_target.
+      # Raise it only once the unit has reached its own setpoint, so the unit is not
+      # heating the room more without a higher setpoint.
+      - variables:
+          current_setpoint: >-
+            {{ state_attr(climate_entity, 'temperature') | float
+               if is_number(state_attr(climate_entity, 'temperature'))
+               else target_temp | float }}
 
-  # Without a fresh room reading, leave the setpoint unchanged.
-  - if:
-      - condition: template
-        value_template: >-
-          {{ not is_number(states(temperature_sensor))
-             or (now() -
-          states[temperature_sensor].last_reported).total_seconds() >
-          stale_after_seconds }}
-    then:
-      - stop:
-          "Room temperature is unavailable or stale: leaving the setpoint
-          unchanged."
+      - variables:
+          new_setpoint: >-
+            {% set room = states(temperature_sensor) | float %} {% set unit_temp
+            = state_attr(climate_entity, 'current_temperature') %} {% set
+            unit_reached = is_number(unit_temp)
+               and unit_temp | float >= current_setpoint | float %}
+            {% set step = 1 if room < target_temp | float - deadband and
+            unit_reached
+               else -1 if room > target_temp | float + deadband else 0 %}
+            {{ [current_setpoint | float + step,
+                target_temp | float + max_above_target] | min }}
 
-  # Step the setpoint by 1 °C toward target, never above target + max_above_target.
-  # Raise it only once the unit has reached its own setpoint, so the unit is not
-  # heating the room more without a higher setpoint.
-  - variables:
-      current_setpoint: >-
-        {{ state_attr(climate_entity, 'temperature') | float
-           if is_number(state_attr(climate_entity, 'temperature'))
-           else target_temp | float }}
-
-  - variables:
-      new_setpoint: >-
-        {% set room = states(temperature_sensor) | float %} {% set unit_temp =
-        state_attr(climate_entity, 'current_temperature') %} {% set unit_reached
-        = is_number(unit_temp)
-           and unit_temp | float >= current_setpoint | float %}
-        {% set step = 1 if room < target_temp | float - deadband and
-        unit_reached
-           else -1 if room > target_temp | float + deadband else 0 %}
-        {{ [current_setpoint | float + step,
-            target_temp | float + max_above_target] | min }}
-
-  - if:
-      - condition: template
-        value_template: "{{ new_setpoint | float != current_setpoint | float }}"
-    then:
-      - action: climate.set_temperature
-        target:
-          entity_id: !input climate_entity
-        data:
-          temperature: "{{ new_setpoint }}"
+      - if:
+          - condition: template
+            value_template:
+              "{{ new_setpoint | float != current_setpoint | float }}"
+        then:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: "{{ new_setpoint }}"
 
 mode: restart
