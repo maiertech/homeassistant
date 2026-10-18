@@ -1,8 +1,7 @@
 blueprint:
   name: AC Heating
   description: |
-    Start heating by toggling the room heating switch to `on`
-    or by manually setting HVAC mode to `heat`.
+    Start heating by toggling the room heating switch to `on`.
 
     This automation behaves as follows:
 
@@ -15,13 +14,24 @@ blueprint:
     - **When HVAC mode changes to anything other than `heat`:**
       toggle the room heating switch to `off`.
 
-    - **When occupancy changes:**
+    - **When HVAC mode is set to `heat` while the room heating switch is off:**
+      nothing happens, so you can heat manually.
+
+    - **When occupancy changes while the room heating switch is on:**
       apply the new target temperature as set temperature.
 
-    - **Every 15 minutes:**
-      - If the room temperature is below target and AC's set temperature has been reached,
-        increase the set temperature by 1 °C (but never more than 2 °C above the target temperature).
-      - If the room temperature is above target, decrease the set temperature by 1 °C.
+    - **Every 15 minutes while the room heating switch is on:**
+      - If the room temperature is more than 0.5 °C below target and the AC's own
+        measured temperature has reached its set temperature, increase the set
+        temperature by 1 °C (but never more than 2 °C above the target temperature).
+      - If the room temperature is more than 0.5 °C above target, decrease the set
+        temperature by 1 °C.
+      - If the room temperature reading is missing or more than 15 minutes old,
+        leave the set temperature unchanged.
+      - A set temperature changed by hand is corrected by the next run.
+
+    - **When Home Assistant starts while the room heating switch is on:** run the
+      15-minute check.
   domain: automation
   homeassistant:
     min_version: 2026.10.2
