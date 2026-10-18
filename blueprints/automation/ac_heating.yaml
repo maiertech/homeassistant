@@ -1,0 +1,270 @@
+blueprint:
+  name: AC Heating
+  description: |
+    Start heating by toggling the room heating switch to `on`.
+
+    This automation behaves as follows:
+
+    - **When the room heating switch turns on:**
+      switch HVAC mode to `heat` and set the target temperature (depending on occupancy).
+
+    - **When the room heating switch turns off:**
+      if HVAC mode is `heat`, set it to `off` (preserve other HVAC modes).
+
+    - **When HVAC mode changes to anything other than `heat`:**
+      toggle the room heating switch to `off`.
+
+    - **When HVAC mode is set to `heat` while the room heating switch is off:**
+      nothing happens, so you can heat manually.
+
+    - **When occupancy changes while the room heating switch is on:**
+      apply the new target temperature as set temperature.
+
+    - **Every 15 minutes while the room heating switch is on:**
+      - If the room temperature is more than 0.5 °C below target and the AC's own
+        measured temperature has reached its set temperature, increase the set
+        temperature by 1 °C (but never more than 2 °C above the target temperature).
+      - If the room temperature is more than 0.5 °C above target, decrease the set
+        temperature by 1 °C.
+      - If the room temperature reading is missing or more than 15 minutes old,
+        leave the set temperature unchanged.
+      - If the AC is unavailable or unknown, leave the set temperature unchanged.
+      - A set temperature changed by hand will be corrected eventually.
+
+    - **When Home Assistant starts while the room heating switch is on:** if the
+      AC is not in heat mode, turn the room heating switch off. Otherwise, run the
+      15-minute check.
+  domain: automation
+  homeassistant:
+    min_version: 2026.10.2
+  input:
+    climate_entity:
+      name: AC
+      description: Climate entity of the room AC.
+      selector:
+        entity:
+          filter:
+            - domain: climate
+    temperature_sensor:
+      name: Room temperature sensor
+      description:
+        The target temp needs to be reached and maintained on this sensor.
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+    occupancy_entity:
+      name: Occupancy entity
+      description: On while the room is occupied.
+      selector:
+        entity:
+          filter:
+            - domain:
+                - input_boolean
+                - binary_sensor
+    heating_switch:
+      name: Room heating switch
+      description: Indicates whether or not the room should be heated.
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    unoccupied_target_temp:
+      name: Unoccupied target temperature
+      description: Target temperature while the room is unoccupied.
+      default: 17
+      selector:
+        number:
+          # The Toshiba integration rejects set temperatures below 17 °C.
+          min: 17
+          max: 19
+          step: 0.5
+          unit_of_measurement: °C
+    occupied_target_temp:
+      name: Occupied target temperature
+      description: Target temperature while the room is occupied.
+      default: 22
+      selector:
+        number:
+          min: 19
+          max: 23
+          step: 0.5
+          unit_of_measurement: °C
+
+triggers:
+  - trigger: state
+    entity_id: !input heating_switch
+    from: "off"
+    to: "on"
+    id: heating_switch_on
+  - trigger: state
+    entity_id: !input heating_switch
+    from: "on"
+    to: "off"
+    id: heating_switch_off
+  - trigger: state
+    entity_id: !input occupancy_entity
+    id: occupancy_changed
+  - trigger: state
+    entity_id: !input climate_entity
+    id: hvac_mode_changed
+  - trigger: time_pattern
+    minutes: "/15"
+  - trigger: homeassistant
+    event: start
+    id: ha_started
+
+actions:
+  - variables:
+      climate_entity: !input climate_entity
+      temperature_sensor: !input temperature_sensor
+      occupancy_entity: !input occupancy_entity
+      heating_switch: !input heating_switch
+      unoccupied_target_temp: !input unoccupied_target_temp
+      occupied_target_temp: !input occupied_target_temp
+      deadband: 0.5
+      max_above_target: 2
+      stale_after_seconds: 900
+      target_temp: >-
+        {{ occupied_target_temp if is_state(occupancy_entity, 'on')
+           else unoccupied_target_temp }}
+      # True only for a known mode other than heat, not unavailable or unknown.
+      ac_in_mode_other_than_heat: >-
+        {{ not is_state(climate_entity, 'heat')
+           and not is_state(climate_entity, 'unavailable')
+           and not is_state(climate_entity, 'unknown') }}
+
+  - choose:
+      # Turn off the AC but only when it's HVAC mode is heat.
+      - conditions:
+          - condition: trigger
+            id: heating_switch_off
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input climate_entity
+                state: heat
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_entity
+                data:
+                  hvac_mode: "off"
+          - stop: "Room heating switch was turned off, therefore turn off AC."
+
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_state(heating_switch, 'on') }}"
+        sequence:
+          - stop: "Heating switch is off: leave the AC alone."
+
+      - conditions:
+          - condition: trigger
+            id: heating_switch_on
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: heat
+              temperature: "{{ target_temp }}"
+          - stop:
+              "Heating switch was turned on: set HVAC mode to `heat` and set
+              temperature to target temperature."
+
+      - conditions:
+          - condition: trigger
+            id: occupancy_changed
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: "{{ target_temp }}"
+          - stop: "Occupancy has changed: set new set temperature on AC."
+
+      - conditions:
+          - condition: trigger
+            id: hvac_mode_changed
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ac_in_mode_other_than_heat }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: !input heating_switch
+          - stop:
+              "HVAC mode has changed to something other than heat: turn room
+              heating switch off."
+
+    # Periodic runs and Home Assistant start.
+    default:
+      - if:
+          - condition: trigger
+            id: ha_started
+          - condition: template
+            value_template: "{{ ac_in_mode_other_than_heat }}"
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input heating_switch
+          - stop:
+              "Home Assistant re-started and the AC is not in heatmode: turn off
+              heating switch."
+
+      - if:
+          - condition: state
+            entity_id: !input climate_entity
+            state:
+              - unavailable
+              - unknown
+        then:
+          - stop:
+              "AC is unavailable or unknown: leave the set temperature
+              unchanged."
+
+      # Room sensor not available.
+      - if:
+          - condition: template
+            value_template: >-
+              {{ not is_number(states(temperature_sensor))
+                 or (now() -
+              states[temperature_sensor].last_reported).total_seconds() >
+              stale_after_seconds }}
+        then:
+          - stop:
+              "Room temperature is unavailable or stale: leave set temperature
+              unchanged."
+
+      - variables:
+          current_set_temperature: >-
+            {{ state_attr(climate_entity, 'temperature') | float
+               if is_number(state_attr(climate_entity, 'temperature'))
+               else target_temp | float }}
+
+      - variables:
+          new_set_temperature: >-
+            {% set room = states(temperature_sensor) | float %} {% set unit_temp
+            = state_attr(climate_entity, 'current_temperature') %} {% set
+            unit_reached = is_number(unit_temp)
+               and unit_temp | float >= current_set_temperature | float %}
+            {% set step = 1 if room < target_temp | float - deadband and
+            unit_reached
+               else -1 if room > target_temp | float + deadband else 0 %}
+            {{ [current_set_temperature | float + step,
+                target_temp | float + max_above_target] | min }}
+
+      - if:
+          - condition: template
+            value_template:
+              "{{ new_set_temperature | float != current_set_temperature | float
+              }}"
+        then:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: "{{ new_set_temperature }}"
+
+mode: restart

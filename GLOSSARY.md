@@ -2,22 +2,23 @@
 
 ## Heating
 
-**AC unit**: An air-conditioning unit that can heat, cool, dry, and run in
-fan-only mode. Heating control applies to AC units only.
+**AC**: The indoor unit of a single split or multi-split air-conditioning
+system. It can heat, cool, dry, and run in fan-only mode.
 
-**Heating season**: The part of the year during which rooms are heated. Heating
-control runs only while the AC unit is in heat mode, so a person starts and ends
-the heating season by selecting heat or another mode.
+**Room heating switch**: A toggle switch for a specific room that turns heating
+on or off.
 
-**Target temperature**: The room temperature that heating aims to hold. It
-depends on whether the room is occupied.
+**Target temperature**: The room temperature that the room should reach and
+maintain, measured by the room temperature sensor. The target temperature can
+vary based on whether the room is occupied or not.
 
-**Occupied**: The room is in use, so the occupied target temperature applies.
+**Occupied**: A room is occupied when there is at least one person in the room.
 
-**Unoccupied**: The room is not in use, so the unoccupied target temperature
-applies.
+**Unoccupied**: A room is unoccupied when there is no person in the room.
 
-**Setpoint**: The temperature the AC unit is set to heat to.
+**Set temperature**: The temperature that is dialed into the AC. The ACs will
+try to heat to this temperature and keep the room at this temperature (measured
+with its own sensor).
 
-**Deadband**: A band around the target temperature within which the setpoint is
-left unchanged.
+**Deadband**: A band around the target temperature within which the set
+temperature on the AC is left unchanged.
