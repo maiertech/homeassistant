@@ -15,7 +15,7 @@ blueprint:
   input:
     climate_entity:
       name: AC indoor unit
-      description: Climate entity of the AC indoor unit to control.
+      description: Climate entity of the AC indoor unit.
       selector:
         entity:
           filter:
@@ -38,9 +38,7 @@ blueprint:
                 - binary_sensor
     heating_switch:
       name: AC heating switch
-      description:
-        On while the room is heated. Turning it off selects off on the AC indoor
-        unit.
+      description: Indicates whether or not the room should be heated.
       selector:
         entity:
           filter:
@@ -98,7 +96,7 @@ actions:
       occupied_target_temp: !input occupied_target_temp
       deadband: 0.5
       max_above_target: 2
-      stale_after_seconds: 3600
+      stale_after_seconds: 900
       target_temp: >-
         {{ occupied_target_temp if is_state(occupancy_entity, 'on')
            else unoccupied_target_temp }}
