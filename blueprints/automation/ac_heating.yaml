@@ -101,7 +101,7 @@ triggers:
     entity_id: !input heating_switch
     from: "on"
     to: "off"
-    id: switch_off
+    id: heating_switch_off
   - trigger: state
     entity_id: !input occupancy_entity
     id: occupancy_changed
@@ -138,7 +138,7 @@ actions:
       # The unit is switched off only while it is still in heat mode.
       - conditions:
           - condition: trigger
-            id: switch_off
+            id: heating_switch_off
         sequence:
           - if:
               - condition: state
