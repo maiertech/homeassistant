@@ -1,27 +1,43 @@
 blueprint:
   name: AC Heating
   description: |
-    Start heating by toggling the room heating switch to `on`
-    or by manually setting HVAC mode to `heat`.
+    While the room heating switch is on, heat the room to its target temperature.
 
-    This automation behaves as follows:
+    **When the room heating switch turns on:** set the AC to heat mode and set
+    the set temperature to the target temperature. The target temperature depends
+    on whether the room is occupied.
 
-    - **When the room heating switch turns on:**
-      switch HVAC mode to `heat` and set the target temperature (depending on occupancy).
+    **When the room heating switch turns off:** if the AC is in heat mode, set it
+    to off. Leave any other mode alone.
 
-    - **When the room heating switch turns off:**
-      if HVAC mode is `heat`, set it to `off` (preserve other HVAC modes).
+    **When the AC changes to any other mode while the room heating switch is on:**
+    turn the room heating switch off. Unavailable and unknown do not count as
+    another mode. The same check runs every 15 minutes.
 
-    - **When HVAC mode changes to anything other than `heat`:**
-      toggle the room heating switch to `off`.
+    **When the AC is set to heat by hand while the room heating switch is off:**
+    nothing happens. The room heating switch stays off, so you can heat manually.
 
-    - **When occupancy changes:**
-      apply the new target temperature as set temperature.
+    **When occupancy changes while the room heating switch is on:** set the set
+    temperature to the new target temperature immediately.
 
-    - **Every 15 minutes:**
-      - If the room temperature is below target and AC's set temperature has been reached,
-        increase the set temperature by 1 °C (but never more than 2 °C above the target temperature).
-      - If the room temperature is above target, decrease the set temperature by 1 °C.
+    **Every 15 minutes while the room heating switch is on:**
+
+    - If the room is more than 0.5 °C below the target temperature, and the AC's
+      own measured temperature has reached its set temperature, raise the set
+      temperature by 1 °C.
+    - If the room is more than 0.5 °C above the target temperature, lower the set
+      temperature by 1 °C.
+    - The set temperature never goes more than 2 °C above the target temperature.
+      A higher value is lowered on the next run.
+    - If the room temperature reading is missing or more than 15 minutes old,
+      leave the set temperature unchanged.
+
+    A set temperature changed by hand while the room heating switch is on is
+    corrected by the next 15-minute run. Turning the switch on opts the room into
+    automatic control.
+
+    **When Home Assistant starts while the room heating switch is on:** run the
+    15-minute check.
   domain: automation
   homeassistant:
     min_version: 2026.10.2
