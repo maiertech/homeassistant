@@ -27,15 +27,16 @@ blueprint:
     min_version: 2026.10.2
   input:
     climate_entity:
-      name: AC indoor unit
-      description: Climate entity of the AC indoor unit.
+      name: AC
+      description: Climate entity of the room AC.
       selector:
         entity:
           filter:
             - domain: climate
     temperature_sensor:
       name: Room temperature sensor
-      description: Room temperature used to decide the set temperature.
+      description:
+        The target temp needs to be reached and maintained on this sensor.
       selector:
         entity:
           filter:
@@ -50,7 +51,7 @@ blueprint:
                 - input_boolean
                 - binary_sensor
     heating_switch:
-      name: AC heating switch
+      name: Room heating switch
       description: Indicates whether or not the room should be heated.
       selector:
         entity:
