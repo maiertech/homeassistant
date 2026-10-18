@@ -1,15 +1,25 @@
 blueprint:
   name: AC Heating
-  description: >-
+  description: |
     While the AC heating switch is on, heat the room to its target temperature.
-    Turning the switch on selects heat and sets the target, which is the
-    occupied or unoccupied target temperature depending on the occupancy entity.
-    Changes in occupancy apply the new target immediately. If the AC indoor unit
-    is set to any mode other than heat, the switch turns off. Every 15 minutes,
-    if the room is below target and the unit has reached its own setpoint, the
-    setpoint steps up 1 °C, never more than 2 °C above target. If the room is
-    above target, the setpoint steps down 1 °C. Turning the switch off selects
-    off, if the unit is in heat mode.
+
+    **When the AC heating switch turns on:** select heat and set the target
+    temperature. The target is different when the room is occupied and when it
+    is not.
+
+    **When the AC heating switch turns off:** select off, if the AC indoor unit
+    is in heat mode.
+
+    **When occupancy changes:** apply the new target temperature immediately.
+
+    **When the AC indoor unit changes to any mode other than heat:** turn the AC
+    heating switch off.
+
+    **Every 15 minutes:**
+
+    - If the room is below target and the AC indoor unit has reached its own
+      setpoint, step the setpoint up 1 °C, never more than 2 °C above target.
+    - If the room is above target, step the setpoint down 1 °C.
   domain: automation
   homeassistant:
     min_version: 2026.10.2
