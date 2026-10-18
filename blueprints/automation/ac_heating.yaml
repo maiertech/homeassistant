@@ -96,7 +96,7 @@ triggers:
     entity_id: !input heating_switch
     from: "off"
     to: "on"
-    id: switch_on
+    id: heating_switch_on
   - trigger: state
     entity_id: !input heating_switch
     from: "on"
@@ -160,7 +160,7 @@ actions:
 
       - conditions:
           - condition: trigger
-            id: switch_on
+            id: heating_switch_on
         sequence:
           - action: climate.set_temperature
             target:
