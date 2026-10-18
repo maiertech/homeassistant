@@ -4,11 +4,12 @@ blueprint:
     While the AC heating switch is on, heat the room to its target temperature.
     Turning the switch on selects heat and sets the target, which is the
     occupied or unoccupied target temperature depending on the occupancy entity.
-    Changes in occupancy apply the new target immediately. Every 15 minutes the
-    unit is kept in heat mode. If the room is below target and the unit has
-    reached its own setpoint, the setpoint steps up 1 °C, never more than 2 °C
-    above target. If the room is above target, the setpoint steps down 1 °C.
-    Turning the switch off selects off.
+    Changes in occupancy apply the new target immediately. If the AC indoor unit
+    is set to any mode other than heat, the switch turns off. Every 15 minutes,
+    if the room is below target and the unit has reached its own setpoint, the
+    setpoint steps up 1 °C, never more than 2 °C above target. If the room is
+    above target, the setpoint steps down 1 °C. Turning the switch off selects
+    off, if the unit is in heat mode.
   domain: automation
   homeassistant:
     min_version: 2026.10.2
@@ -79,6 +80,9 @@ triggers:
   - trigger: state
     entity_id: !input occupancy_entity
     id: occupancy_changed
+  - trigger: state
+    entity_id: !input climate_entity
+    id: mode_changed
   - trigger: time_pattern
     minutes: "/15"
     id: periodic
@@ -105,11 +109,16 @@ actions:
       - condition: trigger
         id: switch_off
     then:
-      - action: climate.set_hvac_mode
-        target:
-          entity_id: !input climate_entity
-        data:
-          hvac_mode: "off"
+      - if:
+          - condition: state
+            entity_id: !input climate_entity
+            state: heat
+        then:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: "off"
       - stop: "Heating switch was turned off: turn off AC."
 
   - if:
@@ -141,16 +150,18 @@ actions:
           temperature: "{{ target_temp }}"
       - stop: "Occupancy has changed: new target temp set on the AC."
 
-  # Periodic control keeps the unit in heat mode.
+  # Any mode other than heat means someone took over the AC, so heating ends.
   - if:
       - condition: template
-        value_template: "{{ not is_state(climate_entity, 'heat') }}"
+        value_template: >-
+          {{ not is_state(climate_entity, 'heat')
+             and not is_state(climate_entity, 'unavailable')
+             and not is_state(climate_entity, 'unknown') }}
     then:
-      - action: climate.set_hvac_mode
+      - action: input_boolean.turn_off
         target:
-          entity_id: !input climate_entity
-        data:
-          hvac_mode: heat
+          entity_id: !input heating_switch
+      - stop: "AC left heat mode: heating switch turned off."
 
   # Without a fresh room reading, leave the setpoint unchanged.
   - if:
